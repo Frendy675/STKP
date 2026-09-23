@@ -2,10 +2,10 @@ import sys
 import socket
 import time
 
-mode = sys.argv
+mode = sys.argv[1]
 
 # --- SERVER 1 (Penjumlahan + Panggil Server 2) ---
-if mode == 'server1':
+if mode == 'server1':   
     s = socket.socket()
     s.bind(('0.0.0.0', 5001))
     s.listen(1)
@@ -17,7 +17,7 @@ if mode == 'server1':
         
         # BARU: Server 1 bertindak sebagai client untuk Server 2
         s2 = socket.socket()
-        s2.connect(('server2', 5002))
+        s2.connect(('192.168.3.43', 5002))
         s2.send(str(hasil_tambah).encode())
         pajak, total = s2.recv(1024).decode().split(',')
         s2.close()
@@ -35,7 +35,7 @@ elif mode == 'server2':
     while True:
         conn, addr = s.accept()
         jumlah = float(conn.recv(1024).decode())
-        pajak = jumlah * 0.10
+        pajak = jumlah * 0.20
         total = jumlah + pajak
         conn.send(f"{pajak},{total}".encode())
         conn.close()
@@ -45,7 +45,7 @@ elif mode == 'client':
     angka1, angka2 = "100", "50"
 
     s1 = socket.socket()
-    s1.connect(('server1', 5001))
+    s1.connect(('192.168.3.41', 5001))
     s1.send(f"{angka1},{angka2}".encode())
     
     hasil_tambah, pajak, total_akhir = s1.recv(1024).decode().split(',')
