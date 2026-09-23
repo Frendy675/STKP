@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D First-Person RPG - Shop & Stat Reset System</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 8px; height: 8px; border: 2px solid rgba(255,255,255,0.8); border-radius: 50%; pointer-events: none; z-index: 10;
+        }
+        #sword-container {
+            position: absolute; bottom: -10px; right: 50px; width: 260px; height: 350px; pointer-events: none; z-index: 9;
+            transform-origin: bottom right; transition: transform 0.08s ease-in-out;
+        }
+        .sword-swing { transform: rotate(-45deg) translate(-40px, -20px) scale(1.1); }
+        #menu-overlay {
+            position: absolute; inset: 0; background: rgba(3, 3, 7, 0.92); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 100; color: white;
+            transition: opacity 0.2s ease;
+        }
+        .hidden-menu { opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Menu Utama / Pause (ESC Menu) -->
+    <div id="menu-overlay">
+        <div class="text-center max-w-2xl w-full p-6 bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto backdrop-blur-md">
+            <h1 class="text-3xl font-extrabold text-amber-400 mb-1 tracking-wider">DUNGEON MENU (PAUSED)</h1>
+            <p class="text-slate-400 mb-4 text-xs">Atur Status, Alokasi/Reset Stat, Beli Item Toko, & Teleportasi Stage.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left mb-6">
+                <!-- Panel Alokasi & Reset Stat -->
+                <div class="bg-slate-800/90 p-4 rounded-xl border border-slate-700">
+                    <h2 class="font-bold text-emerald-400 text-xs mb-2 border-b border-slate-700 pb-1 flex justify-between">
+                        <span>ALOKASI STAT</span>
+                        <span>Poin: <span id="stat-points" class="text-amber-300">0</span></span>
+                    </h2>
+                    <div class="space-y-2 text-xs">
+                        <!-- Strength -->
+                        <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded">
+                            <span>STR: <b id="stat-str" class="text-amber-200">10</b></span>
+                            <div class="flex gap-1">
+                                <button onclick="resetStat('str')" title="Kurangi 1 Stat" class="bg-red-600 hover:bg-red-500 px-2 py-0.5 rounded font-bold text-white transition">-</button>
+                                <button onclick="allocateStat('str')" title="Tambah 1 Stat" class="bg-emerald-600 hover:bg-emerald-500 px-2.5 py-0.5 rounded font-bold text-white transition">+</button>
+                            </div>
+                        </div>
+                        <!-- Vitality -->
+                        <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded">
+                            <span>VIT: <b id="stat-vit" class="text-amber-200">10</b></span>
+                            <div class="flex gap-1">
+                                <button onclick="resetStat('vit')" title="Kurangi 1 Stat" class="bg-red-600 hover:bg-red-500 px-2 py-0.5 rounded font-bold text-white transition">-</button>
+                                <button onclick="allocateStat('vit')" title="Tambah 1 Stat" class="bg-emerald-600 hover:bg-emerald-500 px-2.5 py-0.5 rounded font-bold text-white transition">+</button>
+                            </div>
+                        </div>
+                        <!-- Agility -->
+                        <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded">
+                            <span>AGI: <b id="stat-agi" class="text-amber-200">5</b></span>
+                            <div class="flex gap-1">
+                                <button onclick="resetStat('agi')" title="Kurangi 1 Stat" class="bg-red-600 hover:bg-red-500 px-2 py-0.5 rounded font-bold text-white transition">-</button>
+                                <button onclick="allocateStat('agi')" title="Tambah 1 Stat" class="bg-emerald-600 hover:bg-emerald-500 px-2.5 py-0.5 rounded font-bold text-white transition">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel Toko Peralatan -->
+                <div class="bg-slate-800/90 p-4 rounded-xl border border-slate-700">
+                    <h2 class="font-bold text-yellow-400 text-xs mb-2 border-b border-slate-700 pb-1">TOKO PERALATAN</h2>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded">
+                            <div>
+                                <div class="font-bold text-slate-200">Greatsword Mithril</div>
+                                <div class="text-[10px] text-slate-400">+25 Attack Power</div>
+                            </div>
+                            <button onclick="buyItem('sword', 80)" class="bg-yellow-600 hover:bg-yellow-500 px-2.5 py-1 rounded font-bold text-slate-950 transition">80 🪙</button>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded">
+                            <div>
+                                <div class="font-bold text-slate-200">Armor Besi Kokoh</div>
+                                <div class="text-[10px] text-slate-400">+50 Max HP</div>
+                            </div>
+                            <button onclick="buyItem('armor', 60)" class="bg-yellow-600 hover:bg-yellow-500 px-2.5 py-1 rounded font-bold text-slate-950 transition">60 🪙</button>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded">
+                            <div>
+                                <div class="font-bold text-slate-200">Elixir Pemulih</div>
+                                <div class="text-[10px] text-slate-400">Pulihkan 75 HP Instan</div>
+                            </div>
+                            <button onclick="buyItem('potion', 25)" class="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded font-bold text-white transition">25 🪙</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Teleportasi Stage -->
+            <div class="bg-slate-800/90 p-4 rounded-xl border border-slate-700 mb-6 text-left">
+                <h2 class="font-bold text-purple-400 text-xs mb-2 border-b border-slate-700 pb-1">PORTAL TELEPORTASI STAGE</h2>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div id="current-teleport-name" class="text-sm font-bold text-amber-300">Slime Forest (Stage 1)</div>
+                        <div class="text-[11px] text-slate-400">Pilih stage yang telah terbuka sebelumnya.</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="changeStage(-1)" class="bg-purple-700 hover:bg-purple-600 px-3 py-1.5 rounded text-xs font-bold text-white transition">◀ Prev</button>
+                        <button onclick="changeStage(1)" class="bg-purple-700 hover:bg-purple-600 px-3 py-1.5 rounded text-xs font-bold text-white transition">Next ▶</button>
+                    </div>
+                </div>
+            </div>
+
+            <button id="resume-btn" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 font-bold text-base rounded-xl shadow-lg transition transform active:scale-95 text-slate-950 cursor-pointer">
+                LANJUTKAN BERPETUALANG
+            </button>
+        </div>
+    </div>
+
+    <!-- Crosshair & Model Senjata 3D -->
+    <div id="crosshair"></div>
+    <div id="sword-container">
+        <svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; filter: drop-shadow(3px 5px 4px rgba(0,0,0,0.7));">
+            <path d="M160 130L230 60C238 52 238 42 230 34C222 26 210 26 202 34L132 104L160 130Z" fill="url(#steelGradient)"/>
+            <path d="M145 118L132 104L202 34L210 42L145 118Z" fill="#e2e8f0"/>
+            <path d="M152 110L205 57" stroke="#334155" stroke-width="3" stroke-linecap="round"/>
+            <path d="M110 160L160 110L175 125L125 175C120 180 112 178 108 172L106 168C104 163 106 158 110 160Z" fill="url(#goldGradient)"/>
+            <circle cx="140" cy="140" r="6" fill="#78350f"/>
+            <rect x="92" y="172" width="22" height="55" rx="4" transform="rotate(-45 92 172)" fill="#451a03"/>
+            <line x1="100" y1="180" x2="115" y2="195" stroke="#78350f" stroke-width="3"/>
+            <line x1="110" y1="190" x2="125" y2="205" stroke="#78350f" stroke-width="3"/>
+            <line x1="120" y1="200" x2="135" y2="215" stroke="#78350f" stroke-width="3"/>
+            <circle cx="85" cy="235" r="10" fill="url(#goldGradient)"/>
+            <defs>
+                <linearGradient id="steelGradient" x1="132" y1="104" x2="230" y2="34" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#64748b"/>
+                    <stop offset="50%" stop-color="#cbd5e1"/>
+                    <stop offset="100%" stop-color="#94a3b8"/>
+                </linearGradient>
+                <linearGradient id="goldGradient" x1="106" y1="160" x2="175" y2="125" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#b45309"/>
+                    <stop offset="50%" stop-color="#f59e0b"/>
+                    <stop offset="100%" stop-color="#d97706"/>
+                </linearGradient>
+            </defs>
+        </svg>
+    </div>
+
+    <!-- HUD / UI Game -->
+    <div class="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-none">
+        <div class="bg-slate-900/85 backdrop-blur-md border border-slate-700/80 p-4 rounded-xl text-white shadow-xl w-72">
+            <div class="flex justify-between items-center mb-1">
+                <span id="player-level" class="font-bold text-amber-400">Level 1 Adventurer</span>
+                <span id="player-gold" class="text-yellow-400 text-sm font-semibold">🪙 0 Gold</span>
+            </div>
+            <div class="text-xs text-slate-300 flex justify-between mb-0.5"><span>HP</span><span id="hp-text">100/100</span></div>
+            <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden mb-2 border border-slate-700">
+                <div id="hp-bar" class="bg-red-500 h-full transition-all duration-300" style="width: 100%;"></div>
+            </div>
+            <div class="text-xs text-slate-300 flex justify-between mb-0.5"><span>EXP</span><span id="xp-text">0/100</span></div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
+                <div id="xp-bar" class="bg-blue-500 h-full transition-all duration-300" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <div class="bg-slate-900/85 backdrop-blur-md border border-slate-700/80 p-3 rounded-xl text-white shadow-xl w-72 text-xs space-y-1">
+            <div id="zone-title" class="font-bold text-purple-400 text-sm">Dungeon: Slime Forest (Stage 1)</div>
+            <div id="quest-text" class="text-slate-300">Mob Terbasmi: 0 / 5</div>
+            <div id="combat-log" class="text-amber-200 italic truncate">Tekan ESC untuk Buka Menu / Toko</div>
+        </div>
+    </div>
+
+    <!-- Script Utama Game 3D Three.js -->
+    <script>
+        let player = {
+            level: 1, exp: 0, nextExp: 100, gold: 0,
+            hp: 100, maxHp: 100, atk: 18, speed: 0.12,
+            statPoints: 0, 
+            str: 10, baseStr: 10,
+            vit: 10, baseVit: 10,
+            agi: 5, baseAgi: 5
+        };
+
+        let currentZone = 1;
+        let maxUnlockedZone = 1;
+        let mobsKilledInZone = 0;
+        let targetMobsToBoss = 5;
+        let isBossActive = false;
+
+        let mobs = [];
+        let projectiles = [];
+
+        const zones = [
+            { name: "Slime Forest (Stage 1)", color: 0x0f172a, floorColor: 0x1e293b, mobName: "Slime Korosif", mobColor: 0x22c55e, bossColor: 0x15803d, aggroRange: 12 },
+            { name: "Goblin Cave (Stage 2)", color: 0x140c0c, floorColor: 0x271c1c, mobName: "Goblin Penjarah", mobColor: 0xeab308, bossColor: 0xa16207, aggroRange: 14 },
+            { name: "Dark Crypt (Stage 3)", color: 0x050505, floorColor: 0x18181b, mobName: "Prajurit Kerangka", mobColor: 0x94a3b8, bossColor: 0x475569, aggroRange: 15 },
+            { name: "Dragon's Lair (Stage 4)", color: 0x1f0505, floorColor: 0x3f0e0e, mobName: "Anak Naga Merah", mobColor: 0xef4444, bossColor: 0x991b1b, aggroRange: 18 }
+        ];
+
+        // --- Inisialisasi Three.js ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(zones[0].color);
+        scene.fog = new THREE.FogExp2(zones[0].color, 0.03);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffedd5, 0.6);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        // --- Terrain Dungeon ---
+        const floorGeo = new THREE.PlaneGeometry(80, 80, 20, 20);
+        const floorMat = new THREE.MeshStandardMaterial({ color: zones[0].floorColor, roughness: 0.85 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.95 });
+        const wallGeo = new THREE.BoxGeometry(2, 8, 80);
+        
+        const wallLeft = new THREE.Mesh(wallGeo, wallMat);
+        wallLeft.position.set(-25, 4, 0);
+        scene.add(wallLeft);
+
+        const wallRight = new THREE.Mesh(wallGeo, wallMat);
+        wallRight.position.set(25, 4, 0);
+        scene.add(wallRight);
+
+        for (let zPos = -30; zPos <= 30; zPos += 20) {
+            const torchLight = new THREE.PointLight(0xf97316, 1.2, 12);
+            torchLight.position.set(-23.5, 4, zPos);
+            scene.add(torchLight);
+        }
+
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        camera.position.set(0, 1.8, 12);
+
+        const menuOverlay = document.getElementById('menu-overlay');
+        document.getElementById('resume-btn').addEventListener('click', () => controls.lock());
+        controls.addEventListener('lock', () => menuOverlay.classList.add('hidden-menu'));
+        controls.addEventListener('unlock', () => { menuOverlay.classList.remove('hidden-menu'); updateUI(); });
+
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape') { if (controls.isLocked) controls.unlock(); }
+            if (!controls.isLocked) return;
+            if (e.code === 'KeyW') moveForward = true;
+            if (e.code === 'KeyS') moveBackward = true;
+            if (e.code === 'KeyA') moveLeft = true;
+            if (e.code === 'KeyD') moveRight = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW') moveForward = false;
+            if (e.code === 'KeyS') moveBackward = false;
+            if (e.code === 'KeyA') moveLeft = false;
+            if (e.code === 'KeyD') moveRight = false;
+        });
+
+        function createMobMesh(isBoss) {
+            const zData = zones[currentZone - 1];
+            const group = new THREE.Group();
+
+            if (isBoss) {
+                const bodyGeo = new THREE.ConeGeometry(1.8, 3.5, 6);
+                const bodyMat = new THREE.MeshStandardMaterial({ color: zData.bossColor, roughness: 0.4 });
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.position.y = 1.75;
+                group.add(body);
+            } else {
+                const mobGeo = new THREE.DodecahedronGeometry(0.9, 1);
+                const mobMat = new THREE.MeshStandardMaterial({ color: zData.mobColor, roughness: 0.2 });
+                const mesh = new THREE.Mesh(mobGeo, mobMat);
+                mesh.position.y = 0.9;
+                group.add(mesh);
+            }
+
+            const aggroRadius = zData.aggroRange * (isBoss ? 1.5 : 1.0);
+            const ringGeo = new THREE.RingGeometry(aggroRadius - 0.1, aggroRadius, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.3 });
+            const aggroRing = new THREE.Mesh(ringGeo, ringMat);
+            aggroRing.rotation.x = -Math.PI / 2;
+            aggroRing.position.y = 0.02;
+            group.add(aggroRing);
+
+            return { group, aggroRadius };
+        }
+
+        function spawnMobBatch() {
+            if (isBossActive) return;
+            mobs.forEach(m => {
+                scene.remove(m.mesh);
+                if(m.telegraphLine) scene.remove(m.telegraphLine);
+            });
+            mobs = [];
+
+            let count = 3 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < count; i++) {
+                let mobDataObj = createMobMesh(false);
+                let mesh = mobDataObj.group;
+                let spawnX = (Math.random() - 0.5) * 36;
+                let spawnZ = -10 - Math.random() * 30;
+                mesh.position.set(spawnX, 0, spawnZ);
+                scene.add(mesh);
+
+                mobs.push({
+                    mesh: mesh,
+                    isBoss: false,
+                    maxHp: currentZone * 40,
+                    hp: currentZone * 40,
+                    atk: currentZone * 5,
+                    speed: 0.03 + Math.random() * 0.015,
+                    aggroRange: mobDataObj.aggroRadius,
+                    name: zones[currentZone - 1].mobName,
+                    homePos: new THREE.Vector3(spawnX, 0, spawnZ),
+                    patrolRadius: 6,
+                    patrolAngle: Math.random() * Math.PI * 2,
+                    isAggroed: false,
+                    skillCooldown: 0,
+                    telegraphLine: null
+                });
+            }
+            updateQuestUI();
+        }
+
+        function spawnBoss() {
+            mobs.forEach(m => {
+                scene.remove(m.mesh);
+                if(m.telegraphLine) scene.remove(m.telegraphLine);
+            });
+            mobs = [];
+
+            let bossDataObj = createMobMesh(true);
+            let mesh = bossDataObj.group;
+            mesh.position.set(0, 0, -25);
+            scene.add(mesh);
+
+            let zData = zones[currentZone - 1];
+            mobs.push({
+                mesh: mesh,
+                isBoss: true,
+                maxHp: currentZone * 300,
+                hp: currentZone * 300,
+                atk: currentZone * 15,
+                speed: 0.04,
+                aggroRange: bossDataObj.aggroRadius,
+                name: `[BOSS] Raja ${zData.mobName}`,
+                homePos: new THREE.Vector3(0, 0, -25),
+                patrolRadius: 4,
+                patrolAngle: 0,
+                isAggroed: true,
+                skillCooldown: 0,
+                telegraphLine: null
+            });
+
+            isBossActive = true;
+            log(`⚠️ PERINGATAN: Boss Dungeon bangkit! Jaga jarak dari Fireball-nya!`);
+            updateQuestUI();
+        }
+
+        function shootFireball(mob) {
+            let fireballGeo = new THREE.SphereGeometry(0.4, 16, 16);
+            let fireballMat = new THREE.MeshBasicMaterial({ color: 0xff5500 });
+            let fireball = new THREE.Mesh(fireballGeo, fireballMat);
+            
+            fireball.position.copy(mob.mesh.position);
+            fireball.position.y += 1.2;
+
+            let targetPos = camera.position.clone();
+            let velocityDir = new THREE.Vector3().subVectors(targetPos, fireball.position).normalize();
+
+            scene.add(fireball);
+            projectiles.push({
+                mesh: fireball,
+                dir: velocityDir,
+                speed: 0.22,
+                damage: mob.atk
+            });
+        }
+
+        window.addEventListener('mousedown', () => {
+            if (!controls.isLocked) return;
+
+            const container = document.getElementById('sword-container');
+            container.classList.add('sword-swing');
+            setTimeout(() => container.classList.remove('sword-swing'), 100);
+
+            for (let i = mobs.length - 1; i >= 0; i--) {
+                let m = mobs[i];
+                let distance = camera.position.distanceTo(m.mesh.position);
+
+                if (distance < 6.0) {
+                    let dmg = player.atk + Math.floor(Math.random() * 6);
+                    m.hp -= dmg;
+                    log(`Menyerang ${m.name} sebesar ${dmg} Damage!`);
+
+                    if (m.hp <= 0) {
+                        scene.remove(m.mesh);
+                        if (m.telegraphLine) scene.remove(m.telegraphLine);
+
+                        let expReward = m.isBoss ? currentZone * 120 : currentZone * 25;
+                        let goldReward = m.isBoss ? currentZone * 100 : currentZone * 18;
+                        player.exp += expReward;
+                        player.gold += goldReward;
+                        log(`Berhasil mengalahkan ${m.name}! (+${expReward} EXP, +${goldReward} Gold)`);
+
+                        mobs.splice(i, 1);
+
+                        if (m.isBoss) {
+                            isBossActive = false;
+                            if (currentZone < zones.length) {
+                                currentZone++;
+                                if (currentZone > maxUnlockedZone) maxUnlockedZone = currentZone;
+                            }
+                            mobsKilledInZone = 0;
+                            log(`🏆 SELAMAT! Naik ke Dungeon tahap berikutnya: ${zones[currentZone-1].name}`);
+                            updateZoneTheme();
+                            setTimeout(spawnMobBatch, 1500);
+                        } else {
+                            mobsKilledInZone++;
+                            if (mobsKilledInZone >= targetMobsToBoss && !isBossActive) {
+                                setTimeout(spawnBoss, 1000);
+                            } else if (mobs.length === 0) {
+                                setTimeout(() => { if (!isBossActive && mobs.length === 0) spawnMobBatch(); }, 6000);
+                            }
+                        }
+
+                        checkLevelUp();
+                        updateUI();
+                    }
+                    break;
+                }
+            }
+        });
+
+        function updateZoneTheme() {
+            let zData = zones[currentZone - 1];
+            scene.background.setHex(zData.color);
+            scene.fog.color.setHex(zData.color);
+            floor.material.color.setHex(zData.floorColor);
+            spawnMobBatch();
+        }
+
+        window.changeStage = function(direction) {
+            let targetZone = currentZone + direction;
+            if (targetZone < 1 || targetZone > maxUnlockedZone) { log("Stage tidak tersedia/terkunci!"); return; }
+            currentZone = targetZone;
+            mobsKilledInZone = 0;
+            isBossActive = false;
+            updateZoneTheme();
+            log(`Berpindah ke ${zones[currentZone-1].name}`);
+            updateUI();
+        };
+
+        function checkLevelUp() {
+            if (player.exp >= player.nextExp) {
+                player.level++;
+                player.exp -= player.nextExp;
+                player.nextExp = Math.floor(player.nextExp * 1.3);
+                player.statPoints += 3;
+                player.maxHp += 25;
+                player.hp = player.maxHp;
+                log(`🎉 LEVEL UP! Level ${player.level}! +3 Poin Stat`);
+            }
+        }
+
+        // --- SISTEM ALOKASI & RESET STAT INDIVIDUAL ---
+        window.allocateStat = function(stat) {
+            if (player.statPoints <= 0) {
+                log("Poin stat tidak mencukupi!");
+                return;
+            }
+            player.statPoints--;
+            if (stat === 'str') { player.str++; player.atk += 4; }
+            if (stat === 'vit') { player.vit++; player.maxHp += 15; player.hp += 15; }
+            if (stat === 'agi') { player.agi++; player.speed += 0.01; }
+            updateUI();
+            log(`Menaikkan 1 poin ${stat.toUpperCase()}`);
+        };
+
+        window.resetStat = function(stat) {
+            if (stat === 'str') {
+                let invested = player.str - player.baseStr;
+                if (invested <= 0) { log("Stat STR sudah berada di batas minimal dasar!"); return; }
+                player.str = player.baseStr;
+                player.atk -= invested * 4;
+                player.statPoints += invested;
+                log(`Mereset STR. Mengembalikan ${invested} Poin Stat.`);
+            } else if (stat === 'vit') {
+                let invested = player.vit - player.baseVit;
+                if (invested <= 0) { log("Stat VIT sudah berada di batas minimal dasar!"); return; }
+                player.vit = player.baseVit;
+                player.maxHp -= invested * 15;
+                if (player.hp > player.maxHp) player.hp = player.maxHp;
+                player.statPoints += invested;
+                log(`Mereset VIT. Mengembalikan ${invested} Poin Stat.`);
+            } else if (stat === 'agi') {
+                let invested = player.agi - player.baseAgi;
+                if (invested <= 0) { log("Stat AGI sudah berada di batas minimal dasar!"); return; }
+                player.agi = player.baseAgi;
+                player.speed -= invested * 0.01;
+                player.statPoints += invested;
+                log(`Mereset AGI. Mengembalikan ${invested} Poin Stat.`);
+            }
+            updateUI();
+        };
+
+        // --- SISTEM PEMBELIAN TOKO PERALATAN ---
+        window.buyItem = function(item, cost) {
+            if (player.gold < cost) {
+                log("Gold Anda tidak cukup untuk membeli item ini!");
+                return;
+            }
+            player.gold -= cost;
+
+            if (item === 'sword') {
+                player.atk += 25;
+                log("Berhasil membeli Greatsword Mithril! (+25 ATK)");
+            } else if (item === 'armor') {
+                player.maxHp += 50;
+                player.hp += 50;
+                log("Berhasil membeli Armor Besi Kokoh! (+50 Max HP)");
+            } else if (item === 'potion') {
+                player.hp = Math.min(player.maxHp, player.hp + 75);
+                log("Meminum Elixir Pemulih! (+75 HP dipulihkan)");
+            }
+            updateUI();
+        };
+
+        function log(msg) {
+            document.getElementById('combat-log').innerText = "Status: " + msg;
+        }
+
+        function updateUI() {
+            document.getElementById('player-level').innerText = `Level ${player.level} Adventurer`;
+            document.getElementById('player-gold').innerText = `🪙 ${player.gold} Gold`;
+            document.getElementById('hp-text').innerText = `${player.hp}/${player.maxHp}`;
+            document.getElementById('hp-bar').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+            document.getElementById('xp-text').innerText = `${player.exp}/${player.nextExp}`;
+            document.getElementById('xp-bar').style.width = `${Math.min(100, (player.exp / player.nextExp) * 100)}%`;
+            document.getElementById('stat-points').innerText = player.statPoints;
+            document.getElementById('stat-str').innerText = player.str;
+            document.getElementById('stat-vit').innerText = player.vit;
+            document.getElementById('stat-agi').innerText = player.agi;
+            document.getElementById('current-teleport-name').innerText = zones[currentZone-1].name;
+            updateQuestUI();
+        }
+
+        function updateQuestUI() {
+            document.getElementById('zone-title').innerText = `Dungeon: ${zones[currentZone-1].name}`;
+            if (isBossActive) {
+                document.getElementById('quest-text').innerText = `STATUS: MENGHADAPI BOSS DUNGEON!`;
+                document.getElementById('quest-text').style.color = '#ef4444';
+            } else {
+                document.getElementById('quest-text').innerText = `Mob Terbasmi: ${mobsKilledInZone} / ${targetMobsToBoss}`;
+                document.getElementById('quest-text').style.color = '#cbd5e1';
+            }
+        }
+
+        function updateMobsAI(delta) {
+            mobs.forEach(m => {
+                let dist = camera.position.distanceTo(m.mesh.position);
+
+                if (dist < m.aggroRange || m.isBoss) {
+                    m.isAggroed = true;
+                } else if (dist > m.aggroRange * 1.6) {
+                    m.isAggroed = false;
+                }
+
+                if (m.isAggroed) {
+                    m.mesh.lookAt(camera.position.x, m.mesh.position.y, camera.position.z);
+                    m.mesh.translateZ(m.speed * 1.1);
+
+                    if (!m.telegraphLine) {
+                        let lineGeo = new THREE.BufferGeometry();
+                        let lineMat = new THREE.LineBasicMaterial({ color: 0xff3300, linewidth: 2 });
+                        m.telegraphLine = new THREE.Line(lineGeo, lineMat);
+                        scene.add(m.telegraphLine);
+                    }
+                    
+                    let points = [
+                        new THREE.Vector3(m.mesh.position.x, 0.05, m.mesh.position.z),
+                        new THREE.Vector3(camera.position.x, 0.05, camera.position.z)
+                    ];
+                    m.telegraphLine.geometry.setFromPoints(points);
+
+                    m.skillCooldown += delta;
+                    if (m.skillCooldown >= 2.5) {
+                        m.skillCooldown = 0;
+                        shootFireball(m);
+                    }
+
+                } else {
+                    if (m.telegraphLine) {
+                        scene.remove(m.telegraphLine);
+                        m.telegraphLine = null;
+                    }
+
+                    m.patrolAngle += delta * 0.8;
+                    let targetX = m.homePos.x + Math.cos(m.patrolAngle) * m.patrolRadius;
+                    let targetZ = m.homePos.z + Math.sin(m.patrolAngle) * m.patrolRadius;
+                    
+                    let targetPos = new THREE.Vector3(targetX, 0, targetZ);
+                    m.mesh.lookAt(targetPos);
+                    m.mesh.translateZ(m.speed * 0.6);
+                }
+            });
+
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i];
+                p.mesh.position.addScaledVector(p.dir, p.speed);
+
+                let distToPlayer = p.mesh.position.distanceTo(camera.position);
+                if (distToPlayer < 1.2) {
+                    player.hp -= p.damage;
+                    log(`💥 Terkena Fireball! Menerima ${p.damage} Damage!`);
+                    updateUI();
+
+                    scene.remove(p.mesh);
+                    projectiles.splice(i, 1);
+
+                    if (player.hp <= 0) {
+                        alert("ANDA GUGUR TERBAKAR FIREBALL! Bangkit kembali di checkpoint...");
+                        player.hp = player.maxHp;
+                        camera.position.set(0, 1.8, 12);
+                    }
+                    continue;
+                }
+
+                if (p.mesh.position.length() > 70) {
+                    scene.remove(p.mesh);
+                    projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            if (controls.isLocked) {
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize();
+
+                if (moveForward || moveBackward) velocity.z -= direction.z * 40.0 * delta;
+                if (moveLeft || moveRight) velocity.x -= direction.x * 40.0 * delta;
+
+                controls.moveRight(-velocity.x * delta * (player.speed * 8));
+                controls.moveForward(-velocity.z * delta * (player.speed * 8));
+                camera.position.x = Math.max(-23, Math.min(23, camera.position.x));
+
+                updateMobsAI(delta);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        spawnMobBatch();
+        updateUI();
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
