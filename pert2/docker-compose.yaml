@@ -1,0 +1,14 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./stkp_volumes/nginx:/usr/share/nginx/html:ro
+    networks:
+      - stkp_network
+
+networks:
+  stkp_network:
+    driver: bridge
