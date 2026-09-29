@@ -1,70 +1,91 @@
-from multiprocessing import Process, Queue
+import multiprocessing
+import os
+import time
 
 
-def tugas_a(queue):
-    print("=== CORE 1 ===")
+def tugas_a(event_a, event_b, hasil):
+    print(f"[Core 1] PID {os.getpid()}")
 
-    hasil = 0
+    # Tugas A pertama
+    nilai_1 = 1 * 1
+    print(f"Tugas A: 1 * 1 = {nilai_1}")
 
-    for angka in [1, 2]:
-        nilai = angka * angka
+    hasil.put(nilai_1)
 
-        print(
-            f"Tugas A {angka}*{angka} = {nilai} | Core 1"
-        )
+    # Memberi sinyal bahwa A(1) sudah selesai
+    event_a.set()
 
-        hasil += nilai
+    # Menunggu Tugas B(3) selesai
+    event_b.wait()
 
-    queue.put(hasil)
+    # Tugas A kedua
+    nilai_2 = 2 * 2
+    print(f"Tugas A: 2 * 2 = {nilai_2}")
+
+    hasil.put(nilai_2)
 
 
-def tugas_b(queue):
-    print("=== CORE 2 ===")
+def tugas_b(event_a, event_b, hasil):
+    print(f"[Core 2] PID {os.getpid()}")
 
-    hasil = 0
+    # Menunggu Tugas A(1) selesai
+    event_a.wait()
 
-    for angka in [3, 4]:
-        nilai = angka * angka
+    # Tugas B pertama
+    nilai_1 = 3 * 3
+    print(f"Tugas B: 3 * 3 = {nilai_1}")
 
-        print(
-            f"Tugas B {angka}*{angka} = {nilai} | Core 2"
-        )
+    hasil.put(nilai_1)
 
-        hasil += nilai
+    # Memberi sinyal bahwa B(3) sudah selesai
+    event_b.set()
 
-    queue.put(hasil)
+    # Tugas B kedua menunggu A(2)
+    # Delay kecil hanya untuk memperlihatkan urutan
+    time.sleep(0.01)
+
+    nilai_2 = 4 * 4
+    print(f"Tugas B: 4 * 4 = {nilai_2}")
+
+    hasil.put(nilai_2)
 
 
 if __name__ == "__main__":
 
-    queue = Queue()
+    # Queue untuk mengirim hasil dari process
+    hasil = multiprocessing.Queue()
 
-    # Membuat 2 proses
-    proses_a = Process(
+    # Event untuk sinkronisasi antar-process
+    event_a = multiprocessing.Event()
+    event_b = multiprocessing.Event()
+
+    # Process Core 1
+    proses_a = multiprocessing.Process(
         target=tugas_a,
-        args=(queue,)
+        args=(event_a, event_b, hasil)
     )
 
-    proses_b = Process(
+    # Process Core 2
+    proses_b = multiprocessing.Process(
         target=tugas_b,
-        args=(queue,)
+        args=(event_a, event_b, hasil)
     )
 
-    # Menjalankan secara concurrent
+    # Menjalankan kedua process secara concurrent
     proses_a.start()
     proses_b.start()
 
-    # Menunggu kedua proses selesai
+    # Menunggu kedua process selesai
     proses_a.join()
     proses_b.join()
 
-    # Mengambil hasil
-    hasil_a = queue.get()
-    hasil_b = queue.get()
+    # Mengambil seluruh hasil
+    total = 0
 
-    total = hasil_a + hasil_b
+    while not hasil.empty():
+        total += hasil.get()
 
-    print("\n=== HASIL AKHIR ===")
-    print(f"Hasil Tugas A = {hasil_a}")
-    print(f"Hasil Tugas B = {hasil_b}")
+    print("\n======================")
+    print("HASIL AKHIR")
+    print("======================")
     print(f"Hasil = {total}")
