@@ -18,3 +18,10 @@ def konversi_ke_huruf(nilai_angka):
         nilai_huruf = 'E'
     time.sleep(0.045)
     return (nilai_angka, nilai_huruf)
+
+    if __name__ = "__main__":
+  # Sequential Computing
+  t_seq_start = time.perf_counter()
+  daftar_nilai = tahap_sekuensial_load_data()
+  waktu_sekuensial = time.perf_counter() - t_seq_start
+  print(daftar_nilai)
