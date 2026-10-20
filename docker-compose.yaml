@@ -1,0 +1,62 @@
+services:
+  presentation:
+    image: python:3.12-slim
+    container_name: presentation
+    volumes:
+      - .python:/app
+    tty: true # memastikan komponennya tetap berjalan karena beberapa image akan berhenti jika tidak ada perintah yang dijalankan
+    environment:
+      - OFFSET=5
+      - ROLE=slave
+    networks:
+      - docker_network
+  application:
+    image: python:3.12-slim
+    container_name: application
+    volumes:
+      - .python:/app
+    tty: true # memastikan komponennya tetap berjalan karena beberapa image akan berhenti jika tidak ada perintah yang dijalankan
+    environment:
+      - OFFSET=3
+      - ROLE=master
+    networks:
+      - docker_network
+    database:
+      image: python:3.12-slim
+      container_name: database
+      volumes:
+        - .python:/app
+      tty: true # memastikan komponennya tetap berjalan karena beberapa image akan berhenti jika tidak ada perintah yang dijalankan
+      environment:
+        - OFFSET=2
+        - ROLE=master
+      networks:
+        - docker_network 
+    nginx:
+      image: nginx:alpine
+      container_name: nginx
+      volumes:
+        - ./nginx.conf:/etc/nginx/nginx.conf
+      ports:
+        - "80:80"
+      networks:
+        - docker_network
+    mysql:
+      image: mysql:8.0
+      container_name: mysql
+      environment:
+        MYSQL_ROOT_PASSWORD: rootpassword
+        MYSQL_DATABASE: mydatabase
+        MYSQL_USER: myuser
+        MYSQL_PASSWORD: mypassword
+      ports:
+        - "3306:3306"
+      networks:
+        - docker_network
+      
+  networks:
+    docker_network: 
+      driver: bridge
+
+  volumes:
+    mysql_data:
