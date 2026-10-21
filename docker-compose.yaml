@@ -1,12 +1,41 @@
 services:
+  # DISTRIBUTED MUTEX
+  app3:
+    image: python:3.12-slim
+    container_name: app3
+    hostname: app3
+    volumes:
+      - ./python:/app
+    tty: true
+    networks:
+      - docker_network
+  app2:
+    image: python:3.12-slim
+    container_name: app2
+    hostname: app2
+    volumes:
+      - ./python:/app
+    tty: true
+    networks:
+      - docker_network
+  app1:
+    image: python:3.12-slim
+    container_name: app1
+    hostname: app1
+    volumes:
+      - ./python:/app
+    tty: true
+    networks:
+      - docker_network
+  # DISTRIBUTED SYSTEM ARCHITECTURE & CLOCK SYNCRONIZATION
   presentation:
     image: python:3.12-slim
     container_name: presentation
     volumes:
-      - .python:/app
-    tty: true # memastikan komponennya tetap berjalan karena beberapa image akan berhenti jika tidak ada perintah yang dijalankan
+      - ./python:/app
+    tty: true
     environment:
-      - OFFSET=5
+      - OFFSET=15
       - ROLE=slave
     networks:
       - docker_network
@@ -14,49 +43,49 @@ services:
     image: python:3.12-slim
     container_name: application
     volumes:
-      - .python:/app
-    tty: true # memastikan komponennya tetap berjalan karena beberapa image akan berhenti jika tidak ada perintah yang dijalankan
+      - ./python:/app
+    tty: true
     environment:
-      - OFFSET=3
+      - OFFSET=10
+      - ROLE=slave
+    networks:
+      - docker_network
+  database:
+    image: python:3.12-slim
+    container_name: database
+    volumes:
+      - ./python:/app
+    tty: true
+    environment:
+      - OFFSET=-5
       - ROLE=master
     networks:
       - docker_network
-    database:
-      image: python:3.12-slim
-      container_name: database
-      volumes:
-        - .python:/app
-      tty: true # memastikan komponennya tetap berjalan karena beberapa image akan berhenti jika tidak ada perintah yang dijalankan
-      environment:
-        - OFFSET=2
-        - ROLE=master
-      networks:
-        - docker_network 
-    nginx:
-      image: nginx:alpine
-      container_name: nginx
-      volumes:
-        - ./nginx.conf:/etc/nginx/nginx.conf
-      ports:
-        - "80:80"
-      networks:
-        - docker_network
-    mysql:
-      image: mysql:8.0
-      container_name: mysql
-      environment:
-        MYSQL_ROOT_PASSWORD: rootpassword
-        MYSQL_DATABASE: mydatabase
-        MYSQL_USER: myuser
-        MYSQL_PASSWORD: mypassword
-      ports:
-        - "3306:3306"
-      networks:
-        - docker_network
-      
-  networks:
-    docker_network: 
-      driver: bridge
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./stkp_volume/nginx:/usr/share/nginx/html:ro
+    networks:
+      - docker_network
+  mysql:
+    image: mariadb:10.11
+    container_name: mysql
+    environment:
+      MARIADB_ROOT_PASSWORD: secretsecret
+      MARIADB_USER: admin
+      MARIADB_PASSWORD: secretsecret
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - docker_network
+    tty: true
+    
+networks:
+  docker_network:
+    driver: bridge
 
-  volumes:
-    mysql_data:
+volumes:
+  mysql_data:
