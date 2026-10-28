@@ -92,19 +92,19 @@
 
 services:
   # Data Replication
-  slave:
+  peer1:
     image: python:3.12-slim
-    container_name: slave
-    hostname: slave
+    container_name: peer1
+    hostname: peer1
     volumes:
       - ./python:/app
     tty: true
     networks:
       - docker_network
-  master:
+  peer2:
     image: python:3.12-slim
-    container_name: master
-    hostname: master
+    container_name: peer2
+    hostname: peer2
     volumes:
       - ./python:/app
     tty: true
