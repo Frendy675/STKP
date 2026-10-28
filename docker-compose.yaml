@@ -97,7 +97,7 @@ services:
     container_name: peer1
     hostname: peer1
     volumes:
-      - ./python:/app
+      - ./:/app
     tty: true
     networks:
       - docker_network
@@ -106,7 +106,7 @@ services:
     container_name: peer2
     hostname: peer2
     volumes:
-      - ./python:/app
+      - ./:/app
     tty: true
     networks:
       - docker_network
