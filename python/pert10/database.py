@@ -1,5 +1,5 @@
 from xmlrpc.server import SimpleXMLRPCServer
-from lamport import LamportClock
+from python.pert10.lamport import LamportClock
 
 clock = LamportClock("DATABASE")
 

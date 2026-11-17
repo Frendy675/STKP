@@ -1,6 +1,6 @@
 import os
 import xmlrpc.client
-from lamport import LamportClock
+from python.pert10.lamport import LamportClock
 
 clock = LamportClock("PRESENTATION")
 
