@@ -1,4 +1,115 @@
+# # # services:
+# # #   # DISTRIBUTED MUTEX
+# # #   app3:
+# # #     image: python:3.12-slim
+# # #     container_name: app3
+# # #     hostname: app3
+# # #     volumes:
+# # #       - ./python:/app
+# # #     tty: true
+# # #     networks:
+# # #       - docker_network
+# # #   app2:
+# # #     image: python:3.12-slim
+# # #     container_name: app2
+# # #     hostname: app2
+# # #     volumes:
+# # #       - ./python:/app
+# # #     tty: true
+# # #     networks:
+# # #       - docker_network
+# # #   app1:
+# # #     image: python:3.12-slim
+# # #     container_name: app1
+# # #     hostname: app1
+# # #     volumes:
+# # #       - ./python:/app
+# # #     tty: true
+# # #     networks:
+# # #       - docker_network
+# # #   # DISTRIBUTED SYSTEM ARCHITECTURE & CLOCK SYNCRONIZATION
+# # #   presentation:
+# # #     image: python:3.12-slim
+# # #     container_name: presentation
+# # #     volumes:
+# # #       - ./python:/app
+# # #     tty: true
+# # #     environment:
+# # #       - OFFSET=15
+# # #       - ROLE=slave
+# # #     networks:
+# # #       - docker_network
+# # #   application:
+# # #     image: python:3.12-slim
+# # #     container_name: application
+# # #     volumes:
+# # #       - ./python:/app
+# # #     tty: true
+# # #     environment:
+# # #       - OFFSET=10
+# # #       - ROLE=slave
+# # #     networks:
+# # #       - docker_network
+# # #   database:
+# # #     image: python:3.12-slim
+# # #     container_name: database
+# # #     volumes:
+# # #       - ./python:/app
+# # #     tty: true
+# # #     environment:
+# # #       - OFFSET=-5
+# # #       - ROLE=master
+# # #     networks:
+# # #       - docker_network
+# # #   nginx:
+# # #     image: nginx:alpine
+# # #     container_name: nginx
+# # #     ports:
+# # #       - "8080:80"
+# # #     volumes:
+# # #       - ./stkp_volume/nginx:/usr/share/nginx/html:ro
+# # #     networks:
+# # #       - docker_network
+# # #   mysql:
+# # #     image: mariadb:10.11
+# # #     container_name: mysql
+# # #     environment:
+# # #       MARIADB_ROOT_PASSWORD: secretsecret
+# # #       MARIADB_USER: admin
+# # #       MARIADB_PASSWORD: secretsecret
+# # #     volumes:
+# # #       - mysql_data:/var/lib/mysql
+# # #     networks:
+# # #       - docker_network
+# # #     tty: true
+    
+# # # networks:
+# # #   docker_network:
+# # #     driver: bridge
+
+# # # volumes:
+# # #   mysql_data:
+
 # # services:
+# #   # Data Replication
+# #   peer1:
+# #     image: python:3.12-slim
+# #     container_name: peer1
+# #     hostname: peer1
+# #     volumes:
+# #       - ./:/app
+# #     tty: true
+# #     networks:
+# #       - docker_network
+# #   peer2:
+# #     image: python:3.12-slim
+# #     container_name: peer2
+# #     hostname: peer2
+# #     volumes:
+# #       - ./:/app
+# #     tty: true
+# #     networks:
+# #       - docker_network
 # #   # DISTRIBUTED MUTEX
 # #   app3:
 # #     image: python:3.12-slim
@@ -91,26 +202,56 @@
 # #   mysql_data:
 
 # services:
+#   # Partitioning and Sharding
+#   python3:
+#     build: ./python
+#     container_name: python3
+#     volumes:
+#       - ./python3:/app
+#     tty: true
+#     networks:
+#       - docker_network
+
+#   python2:
+#     build: ./python
+#     container_name: python2
+#     volumes:
+#       - ./python2:/app
+#     tty: true
+#     networks:
+#       - docker_network
+
+#   python:
+#     build: ./python
+#     container_name: python
+#     volumes:
+#       - ./python:/app
+#     tty: true
+#     networks:
+#       - docker_network
+
 #   # Data Replication
-#   peer1:
+#   slave:
 #     image: python:3.12-slim
-#     container_name: peer1
-#     hostname: peer1
+#     container_name: slave
+#     hostname: slave
 #     volumes:
-#       - ./:/app
+#       - ./python:/app
 #     tty: true
 #     networks:
 #       - docker_network
-#   peer2:
+
+#   master:
 #     image: python:3.12-slim
-#     container_name: peer2
-#     hostname: peer2
+#     container_name: master
+#     hostname: master
 #     volumes:
-#       - ./:/app
+#       - ./python:/app
 #     tty: true
 #     networks:
 #       - docker_network
-#   # DISTRIBUTED MUTEX
+
+#   # Distributed Mutex
 #   app3:
 #     image: python:3.12-slim
 #     container_name: app3
@@ -120,6 +261,7 @@
 #     tty: true
 #     networks:
 #       - docker_network
+
 #   app2:
 #     image: python:3.12-slim
 #     container_name: app2
@@ -129,6 +271,7 @@
 #     tty: true
 #     networks:
 #       - docker_network
+
 #   app1:
 #     image: python:3.12-slim
 #     container_name: app1
@@ -138,7 +281,8 @@
 #     tty: true
 #     networks:
 #       - docker_network
-#   # DISTRIBUTED SYSTEM ARCHITECTURE & CLOCK SYNCRONIZATION
+
+#   # Distributed System Architecture & Clock Synchronization
 #   presentation:
 #     image: python:3.12-slim
 #     container_name: presentation
@@ -150,6 +294,7 @@
 #       - ROLE=slave
 #     networks:
 #       - docker_network
+
 #   application:
 #     image: python:3.12-slim
 #     container_name: application
@@ -161,6 +306,7 @@
 #       - ROLE=slave
 #     networks:
 #       - docker_network
+
 #   database:
 #     image: python:3.12-slim
 #     container_name: database
@@ -172,6 +318,8 @@
 #       - ROLE=master
 #     networks:
 #       - docker_network
+
+#   # Nginx
 #   nginx:
 #     image: nginx:alpine
 #     container_name: nginx
@@ -181,6 +329,8 @@
 #       - ./stkp_volume/nginx:/usr/share/nginx/html:ro
 #     networks:
 #       - docker_network
+
+#   # MariaDB
 #   mysql:
 #     image: mariadb:10.11
 #     container_name: mysql
@@ -193,7 +343,7 @@
 #     networks:
 #       - docker_network
 #     tty: true
-    
+
 # networks:
 #   docker_network:
 #     driver: bridge
@@ -201,35 +351,96 @@
 # volumes:
 #   mysql_data:
 
+networks:
+  docker_network:
+    driver: bridge
+volumes:
+  mysql_data:
 services:
+  #18 Event-Driven Architecture & Message Brokers
+  topic:
+    build: ./python
+    container_name: topic
+    hostname: topic
+    tty: true
+    volumes:
+      - ./python/p18:/app
+    networks:
+      - docker_network
+  publisher:
+    build: ./python
+    container_name: publisher
+    hostname: publisher
+    tty: true
+    volumes:
+      - ./python/p18:/app
+    networks:
+      - docker_network
+  subscriber:
+    build: ./python
+    container_name: subscriber
+    hostname: subscriber
+    tty: true
+    volumes:
+      - ./python/p18:/app
+    networks:
+      - docker_network
+  #17 Fault Tolerance
+  coordinator:
+    build: ./python
+    container_name: coordinator
+    hostname: coordinator
+    tty: true
+    volumes:
+      - ./python/p17:/app
+    networks:
+      - docker_network
+  worker1:
+    build: ./python
+    container_name: worker1
+    hostname: worker1
+    volumes:
+      - ./python/p17:/app
+    tty: true
+    networks:
+      - docker_network
+  worker2:
+    build: ./python
+    container_name: worker2
+    hostname: worker2
+    volumes:
+      - ./python/p17:/app
+    tty: true
+    networks:
+      - docker_network
   # Partitioning and Sharding
-  python3:
+  node3:
     build: ./python
-    container_name: python3
-    volumes:
-      - ./python3:/app
-    tty: true
-    networks:
-      - docker_network
-
-  python2:
-    build: ./python
-    container_name: python2
-    volumes:
-      - ./python2:/app
-    tty: true
-    networks:
-      - docker_network
-
-  python:
-    build: ./python
-    container_name: python
+    container_name: node3
+    hostname: node3
     volumes:
       - ./python:/app
     tty: true
     networks:
       - docker_network
-
+  node2:
+    build: ./python
+    container_name: node2
+    hostname: node2
+    volumes:
+      - ./python:/app
+    tty: true
+    networks:
+      - docker_network
+  python:
+    build: ./python
+    container_name: python
+    hostname: python
+    volumes:
+      - ./python:/app
+    tty: true
+    networks:
+      - docker_network
   # Data Replication
   slave:
     image: python:3.12-slim
@@ -240,7 +451,6 @@ services:
     tty: true
     networks:
       - docker_network
-
   master:
     image: python:3.12-slim
     container_name: master
@@ -250,8 +460,7 @@ services:
     tty: true
     networks:
       - docker_network
-
-  # Distributed Mutex
+  # DISTRIBUTED MUTEX
   app3:
     image: python:3.12-slim
     container_name: app3
@@ -261,7 +470,6 @@ services:
     tty: true
     networks:
       - docker_network
-
   app2:
     image: python:3.12-slim
     container_name: app2
@@ -271,7 +479,6 @@ services:
     tty: true
     networks:
       - docker_network
-
   app1:
     image: python:3.12-slim
     container_name: app1
@@ -281,8 +488,7 @@ services:
     tty: true
     networks:
       - docker_network
-
-  # Distributed System Architecture & Clock Synchronization
+  # DISTRIBUTED SYSTEM ARCHITECTURE & CLOCK SYNCRONIZATION
   presentation:
     image: python:3.12-slim
     container_name: presentation
@@ -294,7 +500,6 @@ services:
       - ROLE=slave
     networks:
       - docker_network
-
   application:
     image: python:3.12-slim
     container_name: application
@@ -306,7 +511,6 @@ services:
       - ROLE=slave
     networks:
       - docker_network
-
   database:
     image: python:3.12-slim
     container_name: database
@@ -318,8 +522,6 @@ services:
       - ROLE=master
     networks:
       - docker_network
-
-  # Nginx
   nginx:
     image: nginx:alpine
     container_name: nginx
@@ -329,8 +531,6 @@ services:
       - ./stkp_volume/nginx:/usr/share/nginx/html:ro
     networks:
       - docker_network
-
-  # MariaDB
   mysql:
     image: mariadb:10.11
     container_name: mysql
@@ -343,10 +543,3 @@ services:
     networks:
       - docker_network
     tty: true
-
-networks:
-  docker_network:
-    driver: bridge
-
-volumes:
-  mysql_data:
